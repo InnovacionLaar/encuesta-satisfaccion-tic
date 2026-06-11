@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Encuesta de Satisfacción TIC · LAAR Seguridad</title>
+<style>
+  :root{
+    --negro:#111111;
+    --amarillo:#F5E400;
+    --blanco:#FFFFFF;
+    --gris-claro:#F5F5F5;
+    --gris-medio:#D9D9D9;
+    --radius:18px;
+    --sombra:0 6px 24px rgba(17,17,17,.08);
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%}
+  body{
+    font-family:'Segoe UI',system-ui,-apple-system,Roboto,sans-serif;
+    background:var(--gris-claro);
+    color:var(--negro);
+    display:flex;flex-direction:column;
+    min-height:100dvh;
+  }
+  /* ---------- Header ---------- */
+  header{
+    background:var(--negro);
+    padding:14px 20px;
+    display:flex;align-items:center;justify-content:center;gap:10px;
+  }
+  .logo{
+    background:var(--blanco);border-radius:10px;padding:6px 14px;
+    display:flex;align-items:center;
+  }
+  .logo img{height:34px;display:block}
+  /* ---------- Progreso ---------- */
+  .progress-wrap{padding:14px 20px 0;display:none}
+  .progress-wrap.visible{display:block}
+  .progress-label{font-size:.8rem;color:#666;margin-bottom:6px;display:flex;justify-content:space-between}
+  .progress-bar{height:8px;background:var(--gris-medio);border-radius:99px;overflow:hidden}
+  .progress-fill{height:100%;width:0;background:var(--amarillo);border-radius:99px;transition:width .4s ease}
+  /* ---------- Pantallas ---------- */
+  main{flex:1;display:flex;align-items:center;justify-content:center;padding:24px 20px;}
+  .screen{
+    width:100%;max-width:480px;text-align:center;
+    animation:fadeIn .35s ease both;
+  }
+  .screen.leaving{animation:fadeOut .25s ease both}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
+  @keyframes fadeOut{from{opacity:1}to{opacity:0;transform:translateY(-14px)}}
+  h1{font-size:1.7rem;line-height:1.25;margin-bottom:12px}
+  .subtitle{color:#555;font-size:1rem;margin-bottom:32px;line-height:1.5}
+  .question-emoji{font-size:2.6rem;margin-bottom:14px;display:block}
+  h2{font-size:1.3rem;line-height:1.35;margin-bottom:24px}
+  /* ---------- Botones ---------- */
+  .btn{
+    display:inline-block;border:none;cursor:pointer;
+    background:var(--negro);color:var(--blanco);
+    font-size:1.05rem;font-weight:600;
+    padding:16px 40px;border-radius:99px;
+    transition:background .25s,color .25s,transform .15s;
+  }
+  .btn:hover,.btn:focus-visible{background:var(--amarillo);color:var(--negro)}
+  .btn:active{transform:scale(.97)}
+  .btn-secondary{
+    background:transparent;color:#777;font-weight:500;font-size:.9rem;
+    padding:12px 20px;margin-top:14px;
+  }
+  .btn-secondary:hover{background:transparent;color:var(--negro)}
+  /* ---------- Tarjetas de calificación ---------- */
+  .options{display:flex;flex-direction:column;gap:12px}
+  .option-card{
+    display:flex;align-items:center;gap:16px;
+    background:var(--blanco);border:2px solid transparent;
+    border-radius:var(--radius);padding:16px 20px;
+    box-shadow:var(--sombra);cursor:pointer;text-align:left;
+    font-size:1.05rem;font-weight:600;color:var(--negro);
+    transition:border-color .2s,transform .15s,background .2s;
+    width:100%;
+  }
+  .option-card .emoji{font-size:1.9rem;line-height:1}
+  .option-card:hover{border-color:var(--gris-medio)}
+  .option-card:active{transform:scale(.98)}
+  .option-card.selected{border-color:var(--amarillo);background:#fffde6}
+  /* ---------- Comentario ---------- */
+  textarea{
+    width:100%;min-height:130px;resize:vertical;
+    border:2px solid var(--gris-medio);border-radius:var(--radius);
+    padding:16px;font:inherit;font-size:1rem;background:var(--blanco);
+    margin-bottom:20px;outline:none;transition:border-color .2s;
+  }
+  textarea:focus{border-color:var(--amarillo)}
+  /* ---------- Final ---------- */
+  .celebrate{font-size:4.2rem;margin-bottom:18px;display:block;animation:pop .5s ease}
+  @keyframes pop{0%{transform:scale(0)}70%{transform:scale(1.15)}100%{transform:scale(1)}}
+  footer{padding:14px;text-align:center;font-size:.72rem;color:#999}
+  .hidden{display:none!important}
+  @media (min-width:600px){
+    h1{font-size:2.1rem}
+    .options{gap:14px}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo"><img src="logo.avif" alt="LAAR Seguridad"></div>
+</header>
+
+<div class="progress-wrap" id="progressWrap">
+  <div class="progress-label">
+    <span id="progressText">Pregunta 1 de 8</span>
+    <span id="progressPct">0%</span>
+  </div>
+  <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+</div>
+
+<main id="app"></main>
+
+<footer>Gestión de Innovación · TIC · LAAR Seguridad</footer>
+
+<script>
+const ESCALA = [
+  {v:1, e:"😡", t:"Muy insatisfecho"},
+  {v:2, e:"🙁", t:"Insatisfecho"},
+  {v:3, e:"😐", t:"Neutral"},
+  {v:4, e:"🙂", t:"Satisfecho"},
+  {v:5, e:"🤩", t:"Muy satisfecho"},
+];
+
+const PREGUNTAS = [
+  {id:"area", tipo:"opciones", emoji:"🏢",
+   texto:"¿A qué área perteneces?",
+   opciones:["Operaciones","Comercial","Administrativo / Financiero","Talento Humano","Monitoreo","Otra"]},
+  {id:"satisfaccion_general", tipo:"escala", emoji:"⭐",
+   texto:"En general, ¿qué tan satisfecho estás con los servicios de TIC?"},
+  {id:"tiempo_respuesta", tipo:"escala", emoji:"⏱️",
+   texto:"¿Cómo calificas el tiempo de respuesta cuando solicitas ayuda?"},
+  {id:"atencion_requerimientos", tipo:"escala", emoji:"📋",
+   texto:"¿Cómo calificas la atención a tus requerimientos?"},
+  {id:"soporte_equipos", tipo:"escala", emoji:"💻",
+   texto:"¿Cómo calificas el soporte de equipos (computadores, impresoras, telefonía)?"},
+  {id:"soporte_sistemas", tipo:"escala", emoji:"🖥️",
+   texto:"¿Cómo calificas el soporte de sistemas y aplicaciones?"},
+  {id:"escucha_sugerencias", tipo:"escala", emoji:"👂",
+   texto:"¿Sientes que TIC escucha tus sugerencias e ideas?"},
+  {id:"comentario", tipo:"texto", emoji:"💬",
+   texto:"¿Qué podríamos mejorar? (opcional)"},
+];
+
+const app = document.getElementById("app");
+const progressWrap = document.getElementById("progressWrap");
+const progressFill = document.getElementById("progressFill");
+const progressText = document.getElementById("progressText");
+const progressPct = document.getElementById("progressPct");
+
+let respuestas = {};
+let paso = -1; // -1 = inicio
+
+function actualizarProgreso(){
+  if (paso < 0 || paso >= PREGUNTAS.length){ progressWrap.classList.remove("visible"); return; }
+  progressWrap.classList.add("visible");
+  const pct = Math.round((paso / PREGUNTAS.length) * 100);
+  progressText.textContent = `Pregunta ${paso+1} de ${PREGUNTAS.length}`;
+  progressPct.textContent = `${pct}% completado`;
+  progressFill.style.width = pct + "%";
+}
+
+function transicion(renderFn){
+  const actual = app.firstElementChild;
+  if (actual){
+    actual.classList.add("leaving");
+    setTimeout(()=>{ app.innerHTML=""; renderFn(); }, 230);
+  } else {
+    renderFn();
+  }
+}
+
+function pantallaInicio(){
+  actualizarProgreso();
+  app.innerHTML = `
+    <div class="screen">
+      <h1>¿Cómo ha sido tu experiencia con TIC?</h1>
+      <p class="subtitle">Tu opinión nos ayuda a mejorar nuestros servicios tecnológicos.<br>Te tomará menos de 2 minutos. ⚡</p>
+      <button class="btn" id="btnStart">Comenzar Encuesta</button>
+    </div>`;
+  document.getElementById("btnStart").onclick = ()=>{ paso = 0; transicion(pantallaPregunta); };
+}
+
+function pantallaPregunta(){
+  actualizarProgreso();
+  const q = PREGUNTAS[paso];
+  let cuerpo = "";
+
+  if (q.tipo === "escala"){
+    cuerpo = `<div class="options">` + ESCALA.map(o =>
+      `<button class="option-card" data-v="${o.v}"><span class="emoji">${o.e}</span>${o.t}</button>`
+    ).join("") + `</div>`;
+  } else if (q.tipo === "opciones"){
+    cuerpo = `<div class="options">` + q.opciones.map(o =>
+      `<button class="option-card" data-v="${o}"><span class="emoji">▪️</span>${o}</button>`
+    ).join("") + `</div>`;
+  } else {
+    cuerpo = `
+      <textarea id="comentario" placeholder="Escribe aquí tu sugerencia..."></textarea>
+      <div><button class="btn" id="btnEnviar">Enviar respuestas ✓</button></div>
+      <button class="btn btn-secondary" id="btnOmitir">Omitir y enviar</button>`;
+  }
+
+  app.innerHTML = `
+    <div class="screen">
+      <span class="question-emoji">${q.emoji}</span>
+      <h2>${q.texto}</h2>
+      ${cuerpo}
+    </div>`;
+
+  if (q.tipo === "texto"){
+    document.getElementById("btnEnviar").onclick = ()=>{
+      respuestas[q.id] = document.getElementById("comentario").value.trim();
+      finalizar();
+    };
+    document.getElementById("btnOmitir").onclick = ()=>{ respuestas[q.id] = ""; finalizar(); };
+  } else {
+    app.querySelectorAll(".option-card").forEach(btn=>{
+      btn.onclick = ()=>{
+        btn.classList.add("selected");
+        const v = btn.dataset.v;
+        respuestas[q.id] = (q.tipo === "escala") ? Number(v) : v;
+        // Avance automático con micro-pausa para feedback visual
+        setTimeout(()=>{
+          paso++;
+          transicion(paso < PREGUNTAS.length ? pantallaPregunta : finalizar);
+        }, 280);
+      };
+    });
+  }
+}
+
+// URL de la aplicación web de Google Apps Script (ver apps-script.gs, termina en /exec).
+const ENDPOINT = "https://script.google.com/macros/s/AKfycbzFGvsXeOvowAr6jxrX4-IlXn5_JAstx_UxKOEn2J2E_xJF04XBaY7kzlZpv0ilgiWAAw/exec";
+
+function guardarRespuesta(){
+  respuestas.fecha = new Date().toISOString();
+  // Copia local de respaldo (permite ver datos en el dashboard sin conexión).
+  const datos = JSON.parse(localStorage.getItem("laar_tic_respuestas") || "[]");
+  datos.push(respuestas);
+  localStorage.setItem("laar_tic_respuestas", JSON.stringify(datos));
+  // Envío a Google Sheets. mode:"no-cors" porque Apps Script no envía
+  // cabeceras CORS; la fila se guarda aunque no podamos leer la respuesta.
+  if (ENDPOINT.startsWith("https://")){
+    fetch(ENDPOINT, {
+      method: "POST",
+      mode: "no-cors",
+      headers: { "Content-Type": "text/plain" },
+      body: JSON.stringify(respuestas),
+    }).catch(()=>{ /* queda la copia local */ });
+  }
+}
+
+function finalizar(){
+  guardarRespuesta();
+  paso = PREGUNTAS.length;
+  actualizarProgreso();
+  transicion(()=>{
+    app.innerHTML = `
+      <div class="screen">
+        <span class="celebrate">🎉</span>
+        <h1>¡Gracias por ayudarnos a mejorar!</h1>
+        <p class="subtitle">Tu opinión es importante para construir mejores servicios tecnológicos para todos.</p>
+      </div>`;
+  });
+}
+
+pantallaInicio();
+</script>
+</body>
+</html>

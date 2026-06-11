@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard Ejecutivo · Satisfacción TIC · LAAR Seguridad</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<style>
+  :root{
+    --negro:#111111;
+    --amarillo:#F5E400;
+    --blanco:#FFFFFF;
+    --gris-claro:#F5F5F5;
+    --gris-medio:#D9D9D9;
+    --radius:16px;
+    --sombra:0 6px 24px rgba(17,17,17,.08);
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{
+    font-family:'Segoe UI',system-ui,-apple-system,Roboto,sans-serif;
+    background:var(--gris-claro);color:var(--negro);min-height:100dvh;
+  }
+  header{
+    background:var(--negro);color:var(--blanco);
+    padding:18px 28px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;
+  }
+  .logo{background:var(--blanco);border-radius:10px;padding:6px 14px;display:flex;align-items:center}
+  .logo img{height:34px;display:block}
+  header .titulo{font-size:.9rem;color:#ccc}
+  main{max-width:1100px;margin:0 auto;padding:28px 20px 48px}
+  h1{font-size:1.5rem;margin-bottom:4px}
+  .meta{color:#777;font-size:.88rem;margin-bottom:24px}
+  .meta strong{color:var(--negro)}
+  /* KPI cards */
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:28px}
+  .kpi{
+    background:var(--blanco);border-radius:var(--radius);box-shadow:var(--sombra);
+    padding:18px 16px;border-top:4px solid var(--amarillo);
+  }
+  .kpi .icono{font-size:1.5rem}
+  .kpi .valor{font-size:1.9rem;font-weight:800;margin:6px 0 2px}
+  .kpi .valor small{font-size:.95rem;font-weight:600;color:#999}
+  .kpi .nombre{font-size:.8rem;color:#666;line-height:1.3}
+  .kpi .tendencia{font-size:.75rem;margin-top:6px;font-weight:600}
+  .pos{color:#1a8a3c}.neu{color:#b58a00}.neg{color:#c0392b}
+  /* Charts */
+  .grid-charts{display:grid;grid-template-columns:1fr;gap:18px}
+  @media(min-width:840px){.grid-charts{grid-template-columns:3fr 2fr}}
+  .panel{background:var(--blanco);border-radius:var(--radius);box-shadow:var(--sombra);padding:20px}
+  .panel h2{font-size:1.02rem;margin-bottom:14px}
+  .panel canvas{max-height:320px}
+  /* Comentarios */
+  .comentarios{margin-top:18px}
+  .comentario{
+    background:var(--blanco);border-left:4px solid var(--amarillo);
+    border-radius:10px;box-shadow:var(--sombra);
+    padding:12px 16px;margin-bottom:10px;font-size:.92rem;color:#444;
+  }
+  .vacio{color:#999;font-size:.9rem;padding:8px 0}
+  footer{text-align:center;color:#999;font-size:.72rem;padding:16px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo"><img src="logo.avif" alt="LAAR Seguridad"></div>
+  <div class="titulo">Dashboard Ejecutivo · Satisfacción de Servicios TIC</div>
+</header>
+
+<main>
+  <h1>Satisfacción de Servicios TIC</h1>
+  <p class="meta"><strong id="totalRespuestas">0</strong> respuestas registradas · Actualizado: <span id="fechaAct"></span></p>
+
+  <section class="kpis" id="kpis"></section>
+
+  <section class="grid-charts">
+    <div class="panel">
+      <h2>Promedio por dimensión (sobre 5)</h2>
+      <canvas id="chartBarras"></canvas>
+    </div>
+    <div class="panel">
+      <h2>Distribución de satisfacción general</h2>
+      <canvas id="chartDona"></canvas>
+    </div>
+  </section>
+
+  <section class="panel comentarios">
+    <h2>💬 Sugerencias recibidas</h2>
+    <div id="listaComentarios"></div>
+  </section>
+</main>
+
+<footer>Gestión de Innovación · TIC · LAAR Seguridad</footer>
+
+<script type="module">
+const DIMENSIONES = [
+  {id:"satisfaccion_general",   nombre:"Satisfacción General",        icono:"⭐"},
+  {id:"tiempo_respuesta",       nombre:"Tiempo de Respuesta",         icono:"⏱️"},
+  {id:"atencion_requerimientos",nombre:"Atención de Requerimientos",  icono:"📋"},
+  {id:"soporte_equipos",        nombre:"Soporte de Equipos",          icono:"💻"},
+  {id:"soporte_sistemas",       nombre:"Soporte de Sistemas",         icono:"🖥️"},
+  {id:"escucha_sugerencias",    nombre:"Escucha de Sugerencias",      icono:"👂"},
+];
+
+// URL de la aplicación web de Google Apps Script (la misma de index.html).
+const ENDPOINT = "https://script.google.com/macros/s/AKfycbzFGvsXeOvowAr6jxrX4-IlXn5_JAstx_UxKOEn2J2E_xJF04XBaY7kzlZpv0ilgiWAAw/exec";
+
+// Datos de demostración si aún no hay respuestas reales.
+const DEMO = Array.from({length:24}, () => {
+  const r = {fecha:new Date().toISOString(), comentario:""};
+  DIMENSIONES.forEach(d => r[d.id] = Math.min(5, Math.max(1, Math.round(3.8 + (Math.random()-0.45)*2))));
+  return r;
+});
+
+async function cargarDatos(){
+  // 1) Google Sheets; 2) respaldo local; 3) demo.
+  if (ENDPOINT.startsWith("https://")){
+    try{
+      const res = await fetch(ENDPOINT);
+      const filas = await res.json();
+      if (Array.isArray(filas) && filas.length) return {datos: filas, fuente: "sheets"};
+    }catch(e){ console.warn("No se pudo leer Google Sheets:", e); }
+  }
+  const local = JSON.parse(localStorage.getItem("laar_tic_respuestas") || "[]");
+  if (local.length) return {datos: local, fuente: "local"};
+  return {datos: DEMO, fuente: "demo"};
+}
+
+const {datos, fuente} = await cargarDatos();
+
+document.getElementById("totalRespuestas").textContent =
+  datos.length + (fuente === "demo" ? " (demo)" : fuente === "local" ? " (solo este dispositivo)" : "");
+document.getElementById("fechaAct").textContent =
+  new Date().toLocaleDateString("es-EC", {day:"numeric", month:"long", year:"numeric"});
+
+const prom = id => {
+  const vals = datos.map(r => r[id]).filter(v => typeof v === "number");
+  return vals.length ? vals.reduce((a,b)=>a+b,0)/vals.length : 0;
+};
+
+// KPI cards
+const kpis = document.getElementById("kpis");
+DIMENSIONES.forEach(d => {
+  const p = prom(d.id);
+  const cls = p >= 4 ? "pos" : p >= 3 ? "neu" : "neg";
+  const label = p >= 4 ? "▲ Saludable" : p >= 3 ? "● En observación" : "▼ Requiere acción";
+  kpis.insertAdjacentHTML("beforeend", `
+    <div class="kpi">
+      <span class="icono">${d.icono}</span>
+      <div class="valor">${p.toFixed(1)}<small>/5</small></div>
+      <div class="nombre">${d.nombre}</div>
+      <div class="tendencia ${cls}">${label}</div>
+    </div>`);
+});
+
+// Barras por dimensión
+new Chart(document.getElementById("chartBarras"), {
+  type:"bar",
+  data:{
+    labels: DIMENSIONES.map(d=>d.nombre),
+    datasets:[{
+      data: DIMENSIONES.map(d=>+prom(d.id).toFixed(2)),
+      backgroundColor:"#F5E400",
+      borderColor:"#111111",
+      borderWidth:1.5,
+      borderRadius:8,
+    }]
+  },
+  options:{
+    plugins:{legend:{display:false}},
+    scales:{
+      y:{min:0,max:5,grid:{color:"#eee"}},
+      x:{grid:{display:false},ticks:{font:{size:10}}}
+    }
+  }
+});
+
+// Dona de distribución de satisfacción general
+const dist = [1,2,3,4,5].map(v => datos.filter(r => r.satisfaccion_general === v).length);
+new Chart(document.getElementById("chartDona"), {
+  type:"doughnut",
+  data:{
+    labels:["😡 Muy insatisfecho","🙁 Insatisfecho","😐 Neutral","🙂 Satisfecho","🤩 Muy satisfecho"],
+    datasets:[{
+      data:dist,
+      backgroundColor:["#c0392b","#e67e22","#D9D9D9","#b5ac00","#F5E400"],
+      borderColor:"#fff",
+      borderWidth:3,
+    }]
+  },
+  options:{
+    cutout:"62%",
+    plugins:{legend:{position:"bottom",labels:{font:{size:11},boxWidth:14}}}
+  }
+});
+
+// Comentarios
+const lista = document.getElementById("listaComentarios");
+const comentarios = datos.map(r => r.comentario).filter(c => c && c.trim());
+lista.innerHTML = comentarios.length
+  ? comentarios.map(c => `<div class="comentario">${c.replace(/</g,"&lt;")}</div>`).join("")
+  : `<p class="vacio">Aún no se han recibido sugerencias escritas.</p>`;
+</script>
+</body>
+</html>
