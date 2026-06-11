@@ -126,33 +126,54 @@ const ESCALA = [
   {v:5, e:"🤩", t:"Muy satisfecho"},
 ];
 
+const ESCALA_EXPERIENCIA = [
+  {v:1, e:"😡", t:"Muy mala"},
+  {v:2, e:"🙁", t:"Mala"},
+  {v:3, e:"😐", t:"Regular"},
+  {v:4, e:"🙂", t:"Buena"},
+  {v:5, e:"🤩", t:"Excelente"},
+];
+
 const PREGUNTAS = [
   {id:"area", tipo:"opciones", emoji:"🏢",
-   texto:"¿A qué área perteneces?",
+   texto:"¿A qué área pertenece?",
    opciones:["Operaciones","Comercial","Administrativo / Financiero","Talento Humano","Monitoreo","Otra"]},
   {id:"satisfaccion_general", tipo:"escala", emoji:"⭐",
-   texto:"En general, ¿qué tan satisfecho estás con los servicios de TIC?"},
+   texto:"En general, ¿qué tan satisfecho está con los servicios proporcionados por TIC?"},
   {id:"tiempo_respuesta", tipo:"escala", emoji:"⏱️",
-   texto:"¿Cómo calificas el tiempo de respuesta cuando solicitas ayuda?"},
-  {id:"atencion_requerimientos", tipo:"escala", emoji:"📋",
-   texto:"¿Cómo calificas la atención a tus requerimientos?"},
+   texto:"¿Qué tan satisfecho está con el tiempo de respuesta cuando solicita soporte o asistencia?"},
+  {id:"calidad_solucion", tipo:"escala", emoji:"🎯",
+   texto:"¿Qué tan satisfecho está con las soluciones proporcionadas para atender sus necesidades o problemas tecnológicos?"},
   {id:"soporte_equipos", tipo:"escala", emoji:"💻",
-   texto:"¿Cómo calificas el soporte de equipos (computadores, impresoras, telefonía)?"},
+   texto:"¿Qué tan satisfecho está con el soporte relacionado con equipos tecnológicos?",
+   ayuda:"Computadores, impresoras, telefonía, celulares corporativos"},
   {id:"soporte_sistemas", tipo:"escala", emoji:"🖥️",
-   texto:"¿Cómo calificas el soporte de sistemas y aplicaciones?"},
-  {id:"escucha_sugerencias", tipo:"escala", emoji:"👂",
-   texto:"¿Sientes que TIC escucha tus sugerencias e ideas?"},
+   texto:"¿Qué tan satisfecho está con el soporte relacionado con sistemas y aplicaciones?",
+   ayuda:"Venture Core, Softguard, Outlook, Power BI, SharePoint"},
+  {id:"aporte_negocio", tipo:"escala", emoji:"🚀",
+   texto:"¿Qué tan satisfecho está con el apoyo tecnológico que recibe para realizar su trabajo?"},
   {id:"sistema_mas_usado", tipo:"opciones", emoji:"🧩",
-   texto:"¿Cuál es el sistema que más usas en tu trabajo?",
-   opciones:["Venture","Core","Softguard","Alarm.com","Outlook","Leadbox","RedGPS","Azure","Otro"]},
+   texto:"¿Cuál es el sistema que más utiliza en su trabajo?",
+   opciones:["Venture Core","Softguard","Outlook","Power BI","SharePoint","Sistema de Monitoreo","Portal de Clientes","Otro"]},
   {id:"sistema_otro", tipo:"texto-corto", emoji:"✍️",
-   texto:"¿Cuál es ese otro sistema?",
-   placeholder:"Escribe el nombre del sistema...",
+   texto:"¿Cuál sistema utiliza?",
+   placeholder:"Escriba el nombre del sistema...",
    soloSi: r => r.sistema_mas_usado === "Otro"},
   {id:"calificacion_sistema", tipo:"escala", emoji:"🛠️",
-   texto:"¿Cómo calificas el servicio de ese sistema?"},
+   escala: ESCALA_EXPERIENCIA,
+   texto:"¿Cómo calificaría su experiencia con este sistema?"},
+  {id:"mejora_sistema", tipo:"texto-corto", emoji:"💡",
+   texto:"Si pudiera mejorar algo de este sistema, ¿qué sería? (opcional)",
+   placeholder:"Escriba su idea de mejora..."},
+  {id:"prioridad_mejora", tipo:"opciones", emoji:"🧭",
+   texto:"¿Cuál considera que debería ser la principal prioridad de mejora para TIC?",
+   opciones:["Tiempo de respuesta","Atención de solicitudes","Equipos tecnológicos","Sistemas y aplicaciones","Venture Core","Softguard","Outlook y correo electrónico","Capacitación","Infraestructura tecnológica","Comunicación y seguimiento","Otro"]},
+  {id:"prioridad_otro", tipo:"texto-corto", emoji:"✍️",
+   texto:"¿Cuál sería esa prioridad?",
+   placeholder:"Escriba la prioridad de mejora...",
+   soloSi: r => r.prioridad_mejora === "Otro"},
   {id:"comentario", tipo:"texto", emoji:"💬",
-   texto:"¿Qué podríamos mejorar? (opcional)"},
+   texto:"Comentarios o sugerencias adicionales (opcional)"},
 ];
 
 const app = document.getElementById("app");
@@ -200,7 +221,7 @@ function pantallaPregunta(){
   let cuerpo = "";
 
   if (q.tipo === "escala"){
-    cuerpo = `<div class="options">` + ESCALA.map(o =>
+    cuerpo = `<div class="options">` + (q.escala || ESCALA).map(o =>
       `<button class="option-card" data-v="${o.v}"><span class="emoji">${o.e}</span>${o.t}</button>`
     ).join("") + `</div>`;
   } else if (q.tipo === "opciones"){
@@ -222,15 +243,13 @@ function pantallaPregunta(){
     <div class="screen">
       <span class="question-emoji">${q.emoji}</span>
       <h2>${q.texto}</h2>
+      ${q.ayuda ? `<p class="subtitle" style="margin-top:-12px">${q.ayuda}</p>` : ""}
       ${cuerpo}
     </div>`;
 
   if (q.tipo === "texto-corto"){
     document.getElementById("btnSeguir").onclick = ()=>{
-      const valor = document.getElementById("textoCorto").value.trim();
-      respuestas[q.id] = valor;
-      // El nombre del "otro" sistema reemplaza la opción genérica.
-      if (q.id === "sistema_otro" && valor) respuestas.sistema_mas_usado = valor;
+      respuestas[q.id] = document.getElementById("textoCorto").value.trim();
       avanzar();
     };
   } else if (q.tipo === "texto"){

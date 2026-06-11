@@ -15,10 +15,11 @@
 const HOJA = "Respuestas";
 const COLUMNAS = [
   "fecha", "area",
-  "satisfaccion_general", "tiempo_respuesta", "atencion_requerimientos",
-  "soporte_equipos", "soporte_sistemas", "escucha_sugerencias",
-  "comentario",
-  "sistema_mas_usado", "calificacion_sistema"
+  "satisfaccion_general", "tiempo_respuesta", "calidad_solucion",
+  "soporte_equipos", "soporte_sistemas", "aporte_negocio",
+  "sistema_mas_usado", "sistema_otro", "calificacion_sistema", "mejora_sistema",
+  "prioridad_mejora", "prioridad_otro",
+  "comentario"
 ];
 
 function obtenerHoja() {

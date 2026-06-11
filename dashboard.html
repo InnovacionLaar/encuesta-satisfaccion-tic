@@ -57,6 +57,19 @@
     padding:12px 16px;margin-bottom:10px;font-size:.92rem;color:#444;
   }
   .vacio{color:#999;font-size:.9rem;padding:8px 0}
+  .btn-exportar{
+    border:none;cursor:pointer;background:var(--negro);color:var(--blanco);
+    font-size:.9rem;font-weight:600;padding:12px 22px;border-radius:99px;
+    transition:background .25s,color .25s;
+  }
+  .btn-exportar:hover{background:var(--amarillo);color:var(--negro)}
+  .destacado{
+    flex:1;min-width:200px;border-radius:12px;padding:12px 16px;font-size:.9rem;
+    background:var(--gris-claro);border-left:4px solid var(--gris-medio);
+  }
+  .destacado strong{display:block;font-size:1.02rem}
+  .destacado.top{border-left-color:#1a8a3c}
+  .destacado.bajo{border-left-color:#c0392b}
   footer{text-align:center;color:#999;font-size:.72rem;padding:16px}
 </style>
 </head>
@@ -84,14 +97,36 @@
     </div>
   </section>
 
+  <section class="grid-charts" style="margin-top:18px">
+    <div class="panel">
+      <h2>🧭 Principales prioridades de mejora</h2>
+      <canvas id="chartPrioridades"></canvas>
+    </div>
+    <div class="panel">
+      <h2>🏢 Satisfacción general por área</h2>
+      <canvas id="chartAreas"></canvas>
+    </div>
+  </section>
+
   <section class="panel comentarios">
-    <h2>🧩 Sistemas más usados y su calificación</h2>
+    <h2>🧩 Sistemas más utilizados y su experiencia</h2>
+    <div id="destacadosSistemas" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px"></div>
     <div id="listaSistemas"></div>
   </section>
 
   <section class="panel comentarios">
-    <h2>💬 Sugerencias recibidas</h2>
+    <h2>💡 Oportunidades de mejora por sistema</h2>
+    <div id="listaMejoras"></div>
+  </section>
+
+  <section class="panel comentarios">
+    <h2>💬 Comentarios y sugerencias adicionales</h2>
     <div id="listaComentarios"></div>
+  </section>
+
+  <section style="margin-top:18px;display:flex;gap:10px;justify-content:flex-end">
+    <button class="btn-exportar" id="btnCSV">⬇ Exportar CSV</button>
+    <button class="btn-exportar" id="btnExcel">⬇ Exportar Excel</button>
   </section>
 </main>
 
@@ -99,20 +134,33 @@
 
 <script type="module">
 const DIMENSIONES = [
-  {id:"satisfaccion_general",   nombre:"Satisfacción General",        icono:"⭐"},
-  {id:"tiempo_respuesta",       nombre:"Tiempo de Respuesta",         icono:"⏱️"},
-  {id:"atencion_requerimientos",nombre:"Atención de Requerimientos",  icono:"📋"},
-  {id:"soporte_equipos",        nombre:"Soporte de Equipos",          icono:"💻"},
-  {id:"soporte_sistemas",       nombre:"Soporte de Sistemas",         icono:"🖥️"},
-  {id:"escucha_sugerencias",    nombre:"Escucha de Sugerencias",      icono:"👂"},
+  {id:"satisfaccion_general", nombre:"Satisfacción General TIC",   icono:"⭐"},
+  {id:"tiempo_respuesta",     nombre:"Tiempo de Respuesta",        icono:"⏱️"},
+  {id:"calidad_solucion",     nombre:"Calidad de Solución",        icono:"🎯"},
+  {id:"soporte_equipos",      nombre:"Soporte de Equipos",         icono:"💻"},
+  {id:"soporte_sistemas",     nombre:"Soporte de Sistemas",        icono:"🖥️"},
+  {id:"aporte_negocio",       nombre:"Aporte de TIC al Negocio",   icono:"🚀"},
 ];
 
 // URL de la aplicación web de Google Apps Script (la misma de index.html).
 const ENDPOINT = "https://script.google.com/macros/s/AKfycbyc9MxA05fZHeymLB5toOH0PEat_xenVjM9ruYqw681hWBsGCJbh0rN12EoD50_wK5IwA/exec";
 
 // Datos de demostración si aún no hay respuestas reales.
-const DEMO = Array.from({length:24}, () => {
-  const r = {fecha:new Date().toISOString(), comentario:""};
+const DEMO_SISTEMAS = ["Venture Core","Softguard","Outlook","Power BI","SharePoint"];
+const DEMO_PRIORIDADES = ["Tiempo de respuesta","Capacitación","Sistemas y aplicaciones","Equipos tecnológicos"];
+const DEMO_AREAS = ["Operaciones","Comercial","Monitoreo","Talento Humano"];
+const DEMO = Array.from({length:24}, (_,i) => {
+  const r = {
+    fecha:new Date().toISOString(),
+    area: DEMO_AREAS[i % DEMO_AREAS.length],
+    sistema_mas_usado: DEMO_SISTEMAS[i % DEMO_SISTEMAS.length],
+    sistema_otro:"",
+    calificacion_sistema: Math.min(5, Math.max(1, Math.round(3.5 + (Math.random()-0.4)*2.5))),
+    mejora_sistema:"",
+    prioridad_mejora: DEMO_PRIORIDADES[i % DEMO_PRIORIDADES.length],
+    prioridad_otro:"",
+    comentario:"",
+  };
   DIMENSIONES.forEach(d => r[d.id] = Math.min(5, Math.max(1, Math.round(3.8 + (Math.random()-0.45)*2))));
   return r;
 });
@@ -199,10 +247,15 @@ new Chart(document.getElementById("chartDona"), {
   }
 });
 
-// Sistemas más usados: agrupa por nombre (normalizado) y promedia su calificación.
+const esc = t => (t ?? "").toString().replace(/</g,"&lt;");
+
+// Sistemas más utilizados: agrupa por nombre (si eligió "Otro", usa el nombre escrito).
 const grupos = {};
 datos.forEach(r => {
-  const nombre = (r.sistema_mas_usado || "").toString().trim();
+  let nombre = (r.sistema_mas_usado || "").toString().trim();
+  if (nombre.toLowerCase() === "otro"){
+    nombre = (r.sistema_otro || "").toString().trim() || "Otro (sin especificar)";
+  }
   if (!nombre) return;
   const clave = nombre.toLowerCase();
   if (!grupos[clave]) grupos[clave] = {nombre, menciones:0, suma:0, conCalif:0};
@@ -213,20 +266,126 @@ datos.forEach(r => {
   }
 });
 const sistemas = Object.values(grupos).sort((a,b)=>b.menciones-a.menciones).slice(0,10);
+sistemas.forEach(s => s.prom = s.conCalif ? s.suma/s.conCalif : null);
+
 document.getElementById("listaSistemas").innerHTML = sistemas.length
   ? sistemas.map(s => {
-      const p = s.conCalif ? (s.suma/s.conCalif) : null;
-      const estrella = p === null ? "—" : `${p.toFixed(1)}/5 ${p>=4?"🤩":p>=3?"🙂":"🙁"}`;
-      return `<div class="comentario"><strong>${s.nombre.replace(/</g,"&lt;")}</strong> · ${s.menciones} mención${s.menciones===1?"":"es"} · Calificación: ${estrella}</div>`;
+      const estrella = s.prom === null ? "—" : `${s.prom.toFixed(1)}/5 ${s.prom>=4?"🤩":s.prom>=3?"🙂":"🙁"}`;
+      return `<div class="comentario"><strong>${esc(s.nombre)}</strong> · ${s.menciones} mención${s.menciones===1?"":"es"} · Experiencia: ${estrella}</div>`;
     }).join("")
   : `<p class="vacio">Aún no hay respuestas sobre sistemas.</p>`;
+
+// Mejor y peor valorados (mínimo 1 calificación).
+const calificados = sistemas.filter(s => s.prom !== null);
+const dest = document.getElementById("destacadosSistemas");
+if (calificados.length >= 2){
+  const mejor = [...calificados].sort((a,b)=>b.prom-a.prom)[0];
+  const peor  = [...calificados].sort((a,b)=>a.prom-b.prom)[0];
+  dest.innerHTML = `
+    <div class="destacado top">✅ Mejor valorado<strong>${esc(mejor.nombre)} · ${mejor.prom.toFixed(1)}/5</strong></div>
+    <div class="destacado bajo">⚠️ Menor satisfacción<strong>${esc(peor.nombre)} · ${peor.prom.toFixed(1)}/5</strong></div>`;
+} else { dest.innerHTML = ""; }
+
+// Prioridades de mejora (si eligió "Otro", usa el texto escrito).
+const prioCount = {};
+datos.forEach(r => {
+  let p = (r.prioridad_mejora || "").toString().trim();
+  if (p.toLowerCase() === "otro") p = (r.prioridad_otro || "").toString().trim() || "Otro";
+  if (!p) return;
+  prioCount[p] = (prioCount[p] || 0) + 1;
+});
+const prios = Object.entries(prioCount).sort((a,b)=>b[1]-a[1]).slice(0,8);
+new Chart(document.getElementById("chartPrioridades"), {
+  type:"bar",
+  data:{
+    labels: prios.map(p=>p[0]),
+    datasets:[{data: prios.map(p=>p[1]), backgroundColor:"#111111", borderRadius:6}]
+  },
+  options:{
+    indexAxis:"y",
+    plugins:{legend:{display:false}},
+    scales:{x:{grid:{color:"#eee"},ticks:{precision:0}}, y:{grid:{display:false},ticks:{font:{size:10}}}}
+  }
+});
+
+// Satisfacción general promedio por área.
+const areaAgg = {};
+datos.forEach(r => {
+  const a = (r.area || "").toString().trim();
+  if (!a || typeof r.satisfaccion_general !== "number") return;
+  if (!areaAgg[a]) areaAgg[a] = {suma:0, n:0};
+  areaAgg[a].suma += r.satisfaccion_general; areaAgg[a].n++;
+});
+const areas = Object.entries(areaAgg).map(([a,v])=>[a, v.suma/v.n]).sort((a,b)=>b[1]-a[1]);
+new Chart(document.getElementById("chartAreas"), {
+  type:"bar",
+  data:{
+    labels: areas.map(a=>a[0]),
+    datasets:[{data: areas.map(a=>+a[1].toFixed(2)), backgroundColor:"#F5E400", borderColor:"#111111", borderWidth:1.5, borderRadius:6}]
+  },
+  options:{
+    indexAxis:"y",
+    plugins:{legend:{display:false}},
+    scales:{x:{min:0,max:5,grid:{color:"#eee"}}, y:{grid:{display:false},ticks:{font:{size:10}}}}
+  }
+});
+
+// Oportunidades de mejora por sistema.
+const mejoras = datos
+  .filter(r => r.mejora_sistema && r.mejora_sistema.toString().trim())
+  .map(r => {
+    let s = (r.sistema_mas_usado || "").toString().trim();
+    if (s.toLowerCase() === "otro") s = (r.sistema_otro || "").toString().trim() || "Otro";
+    return `<div class="comentario"><strong>${esc(s || "Sistema no indicado")}:</strong> ${esc(r.mejora_sistema)}</div>`;
+  });
+document.getElementById("listaMejoras").innerHTML = mejoras.length
+  ? mejoras.join("")
+  : `<p class="vacio">Aún no se han recibido ideas de mejora.</p>`;
 
 // Comentarios
 const lista = document.getElementById("listaComentarios");
 const comentarios = datos.map(r => r.comentario).filter(c => c && c.trim());
 lista.innerHTML = comentarios.length
-  ? comentarios.map(c => `<div class="comentario">${c.replace(/</g,"&lt;")}</div>`).join("")
-  : `<p class="vacio">Aún no se han recibido sugerencias escritas.</p>`;
+  ? comentarios.map(c => `<div class="comentario">${esc(c)}</div>`).join("")
+  : `<p class="vacio">Aún no se han recibido comentarios escritos.</p>`;
+
+// ---------- Exportación ----------
+const COLS_EXPORT = [
+  "fecha","area","satisfaccion_general","tiempo_respuesta","calidad_solucion",
+  "soporte_equipos","soporte_sistemas","aporte_negocio",
+  "sistema_mas_usado","sistema_otro","calificacion_sistema","mejora_sistema",
+  "prioridad_mejora","prioridad_otro","comentario"
+];
+
+function descargar(nombre, contenido, mime){
+  const blob = new Blob([contenido], {type: mime});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = nombre;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+const hoy = new Date().toISOString().slice(0,10);
+
+document.getElementById("btnCSV").onclick = ()=>{
+  const celda = v => `"${(v ?? "").toString().replace(/"/g,'""')}"`;
+  const csv = [COLS_EXPORT.join(";")]
+    .concat(datos.map(r => COLS_EXPORT.map(c => celda(r[c])).join(";")))
+    .join("\r\n");
+  // BOM para que Excel reconozca acentos; punto y coma como separador regional.
+  descargar(`encuesta-tic-${hoy}.csv`, "\uFEFF" + csv, "text/csv;charset=utf-8");
+};
+
+document.getElementById("btnExcel").onclick = ()=>{
+  const filas = datos.map(r =>
+    `<tr>${COLS_EXPORT.map(c => `<td>${esc(r[c])}</td>`).join("")}</tr>`).join("");
+  const tabla = `<html xmlns:x="urn:schemas-microsoft-com:office:excel">
+    <head><meta charset="UTF-8"></head><body><table border="1">
+    <tr>${COLS_EXPORT.map(c => `<th>${c}</th>`).join("")}</tr>${filas}
+    </table></body></html>`;
+  descargar(`encuesta-tic-${hoy}.xls`, "\uFEFF" + tabla, "application/vnd.ms-excel");
+};
 </script>
 </body>
 </html>
