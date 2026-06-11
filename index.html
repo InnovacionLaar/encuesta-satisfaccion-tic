@@ -142,9 +142,13 @@ const PREGUNTAS = [
    texto:"¿Cómo calificas el soporte de sistemas y aplicaciones?"},
   {id:"escucha_sugerencias", tipo:"escala", emoji:"👂",
    texto:"¿Sientes que TIC escucha tus sugerencias e ideas?"},
-  {id:"sistema_mas_usado", tipo:"texto-corto", emoji:"🧩",
+  {id:"sistema_mas_usado", tipo:"opciones", emoji:"🧩",
    texto:"¿Cuál es el sistema que más usas en tu trabajo?",
-   placeholder:"Ej.: Outlook, ERP, sistema de monitoreo..."},
+   opciones:["Venture","Core","Softguard","Alarm.com","Outlook","Leadbox","RedGPS","Azure","Otro"]},
+  {id:"sistema_otro", tipo:"texto-corto", emoji:"✍️",
+   texto:"¿Cuál es ese otro sistema?",
+   placeholder:"Escribe el nombre del sistema...",
+   soloSi: r => r.sistema_mas_usado === "Otro"},
   {id:"calificacion_sistema", tipo:"escala", emoji:"🛠️",
    texto:"¿Cómo calificas el servicio de ese sistema?"},
   {id:"comentario", tipo:"texto", emoji:"💬",
@@ -223,9 +227,11 @@ function pantallaPregunta(){
 
   if (q.tipo === "texto-corto"){
     document.getElementById("btnSeguir").onclick = ()=>{
-      respuestas[q.id] = document.getElementById("textoCorto").value.trim();
-      paso++;
-      transicion(paso < PREGUNTAS.length ? pantallaPregunta : finalizar);
+      const valor = document.getElementById("textoCorto").value.trim();
+      respuestas[q.id] = valor;
+      // El nombre del "otro" sistema reemplaza la opción genérica.
+      if (q.id === "sistema_otro" && valor) respuestas.sistema_mas_usado = valor;
+      avanzar();
     };
   } else if (q.tipo === "texto"){
     document.getElementById("btnEnviar").onclick = ()=>{
@@ -240,10 +246,7 @@ function pantallaPregunta(){
         const v = btn.dataset.v;
         respuestas[q.id] = (q.tipo === "escala") ? Number(v) : v;
         // Avance automático con micro-pausa para feedback visual
-        setTimeout(()=>{
-          paso++;
-          transicion(paso < PREGUNTAS.length ? pantallaPregunta : finalizar);
-        }, 280);
+        setTimeout(avanzar, 280);
       };
     });
   }
@@ -251,6 +254,15 @@ function pantallaPregunta(){
 
 // URL de la aplicación web de Google Apps Script (ver apps-script.gs, termina en /exec).
 const ENDPOINT = "https://script.google.com/macros/s/AKfycbyc9MxA05fZHeymLB5toOH0PEat_xenVjM9ruYqw681hWBsGCJbh0rN12EoD50_wK5IwA/exec";
+
+// Avanza a la siguiente pregunta, saltando las condicionales que no apliquen.
+function avanzar(){
+  paso++;
+  while (paso < PREGUNTAS.length && PREGUNTAS[paso].soloSi && !PREGUNTAS[paso].soloSi(respuestas)){
+    paso++;
+  }
+  transicion(paso < PREGUNTAS.length ? pantallaPregunta : finalizar);
+}
 
 function guardarRespuesta(){
   respuestas.fecha = new Date().toISOString();
