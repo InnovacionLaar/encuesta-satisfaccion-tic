@@ -145,6 +145,11 @@ const PREGUNTAS = [
    texto:"¿Cómo calificas el soporte de sistemas y aplicaciones?"},
   {id:"escucha_sugerencias", tipo:"escala", emoji:"👂",
    texto:"¿Sientes que TIC escucha tus sugerencias e ideas?"},
+  {id:"sistema_mas_usado", tipo:"texto-corto", emoji:"🧩",
+   texto:"¿Cuál es el sistema que más usas en tu trabajo?",
+   placeholder:"Ej.: Outlook, ERP, sistema de monitoreo..."},
+  {id:"calificacion_sistema", tipo:"escala", emoji:"🛠️",
+   texto:"¿Cómo calificas el servicio de ese sistema?"},
   {id:"comentario", tipo:"texto", emoji:"💬",
    texto:"¿Qué podríamos mejorar? (opcional)"},
 ];
@@ -201,6 +206,10 @@ function pantallaPregunta(){
     cuerpo = `<div class="options">` + q.opciones.map(o =>
       `<button class="option-card" data-v="${o}"><span class="emoji">▪️</span>${o}</button>`
     ).join("") + `</div>`;
+  } else if (q.tipo === "texto-corto"){
+    cuerpo = `
+      <textarea id="textoCorto" style="min-height:64px" placeholder="${q.placeholder || ""}"></textarea>
+      <div><button class="btn" id="btnSeguir">Continuar →</button></div>`;
   } else {
     cuerpo = `
       <textarea id="comentario" placeholder="Escribe aquí tu sugerencia..."></textarea>
@@ -215,7 +224,13 @@ function pantallaPregunta(){
       ${cuerpo}
     </div>`;
 
-  if (q.tipo === "texto"){
+  if (q.tipo === "texto-corto"){
+    document.getElementById("btnSeguir").onclick = ()=>{
+      respuestas[q.id] = document.getElementById("textoCorto").value.trim();
+      paso++;
+      transicion(paso < PREGUNTAS.length ? pantallaPregunta : finalizar);
+    };
+  } else if (q.tipo === "texto"){
     document.getElementById("btnEnviar").onclick = ()=>{
       respuestas[q.id] = document.getElementById("comentario").value.trim();
       finalizar();

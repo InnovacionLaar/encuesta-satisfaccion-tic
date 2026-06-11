@@ -85,6 +85,11 @@
   </section>
 
   <section class="panel comentarios">
+    <h2>🧩 Sistemas más usados y su calificación</h2>
+    <div id="listaSistemas"></div>
+  </section>
+
+  <section class="panel comentarios">
     <h2>💬 Sugerencias recibidas</h2>
     <div id="listaComentarios"></div>
   </section>
@@ -193,6 +198,28 @@ new Chart(document.getElementById("chartDona"), {
     plugins:{legend:{position:"bottom",labels:{font:{size:11},boxWidth:14}}}
   }
 });
+
+// Sistemas más usados: agrupa por nombre (normalizado) y promedia su calificación.
+const grupos = {};
+datos.forEach(r => {
+  const nombre = (r.sistema_mas_usado || "").toString().trim();
+  if (!nombre) return;
+  const clave = nombre.toLowerCase();
+  if (!grupos[clave]) grupos[clave] = {nombre, menciones:0, suma:0, conCalif:0};
+  grupos[clave].menciones++;
+  if (typeof r.calificacion_sistema === "number"){
+    grupos[clave].suma += r.calificacion_sistema;
+    grupos[clave].conCalif++;
+  }
+});
+const sistemas = Object.values(grupos).sort((a,b)=>b.menciones-a.menciones).slice(0,10);
+document.getElementById("listaSistemas").innerHTML = sistemas.length
+  ? sistemas.map(s => {
+      const p = s.conCalif ? (s.suma/s.conCalif) : null;
+      const estrella = p === null ? "—" : `${p.toFixed(1)}/5 ${p>=4?"🤩":p>=3?"🙂":"🙁"}`;
+      return `<div class="comentario"><strong>${s.nombre.replace(/</g,"&lt;")}</strong> · ${s.menciones} mención${s.menciones===1?"":"es"} · Calificación: ${estrella}</div>`;
+    }).join("")
+  : `<p class="vacio">Aún no hay respuestas sobre sistemas.</p>`;
 
 // Comentarios
 const lista = document.getElementById("listaComentarios");

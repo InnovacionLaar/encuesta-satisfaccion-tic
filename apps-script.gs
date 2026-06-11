@@ -17,7 +17,8 @@ const COLUMNAS = [
   "fecha", "area",
   "satisfaccion_general", "tiempo_respuesta", "atencion_requerimientos",
   "soporte_equipos", "soporte_sistemas", "escucha_sugerencias",
-  "comentario"
+  "comentario",
+  "sistema_mas_usado", "calificacion_sistema"
 ];
 
 function obtenerHoja() {
@@ -27,6 +28,10 @@ function obtenerHoja() {
     hoja = ss.insertSheet(HOJA);
     hoja.appendRow(COLUMNAS);
     hoja.setFrozenRows(1);
+  }
+  // Si se agregaron columnas nuevas al formulario, completa los encabezados.
+  if (hoja.getLastColumn() < COLUMNAS.length) {
+    hoja.getRange(1, 1, 1, COLUMNAS.length).setValues([COLUMNAS]);
   }
   return hoja;
 }
