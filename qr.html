@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QR Encuesta TIC · LAAR Seguridad</title>
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+<style>
+  :root{--negro:#111111;--amarillo:#F5E400;--blanco:#FFFFFF}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{
+    font-family:'Segoe UI',system-ui,sans-serif;background:var(--negro);color:var(--blanco);
+    min-height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    text-align:center;padding:40px 20px;gap:22px;
+  }
+  .logo-chip{background:var(--blanco);border-radius:12px;padding:8px 18px}
+  .logo-chip img{height:40px;display:block}
+  h1{font-size:1.9rem;max-width:560px;line-height:1.3}
+  h1 span{color:var(--amarillo)}
+  p{color:#bbb;max-width:460px;line-height:1.5}
+  #qr{background:var(--blanco);padding:22px;border-radius:18px;border:6px solid var(--amarillo)}
+  .url{font-size:.85rem;color:#888;word-break:break-all;max-width:460px}
+  @media print{
+    body{background:var(--blanco);color:var(--negro)}
+    p,.url{color:#444}
+  }
+</style>
+</head>
+<body>
+  <div class="logo-chip"><img src="logo.avif" alt="LAAR Seguridad"></div>
+  <h1>¿Cómo ha sido tu experiencia con <span>TIC</span>?</h1>
+  <p>Escanea el código con la cámara de tu teléfono y cuéntanos en menos de 2 minutos.</p>
+  <div id="qr"></div>
+  <div class="url">https://innovacionlaar.github.io/encuesta-satisfaccion-tic/</div>
+  <script>
+    new QRCode(document.getElementById("qr"), {
+      text: "https://innovacionlaar.github.io/encuesta-satisfaccion-tic/",
+      width: 260, height: 260,
+      colorDark: "#111111", colorLight: "#FFFFFF",
+      correctLevel: QRCode.CorrectLevel.H
+    });
+  </script>
+</body>
+</html>
